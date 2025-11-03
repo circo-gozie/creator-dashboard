@@ -3,15 +3,23 @@
 
 @custom-variant dark (&:is(.dark *));
 
+.a .one{
+  background-image: repeating-linear-gradient(-45deg, rgba(0,0,0,0.2), rgba(0,0,0,0.2) 1px, transparent 1px, transparent 7px);
+
+}
+  
 :root {
   --primary:#AE0C4D;
   --primary-200:#FF2F2F;
+  --success: #1AA064;
   --accent:#353535;
   --accent-200:#1A1A1A;
   --accent-300:#262626;
   --radius:0.625rem;
   --background:#040404;
   --foreground:#FFFFFF;
+  --chart-1:#8979FF;
+  --chart-2:#FF928A;
   --card:oklch(1 0 0);
   --card-foreground:oklch(0.145 0 0);
   --popover:oklch(1 0 0);
@@ -26,8 +34,6 @@
   --border:var(--accent);
   --input:oklch(0.922 0 0);
   --ring:oklch(0.708 0 0);
-  --chart-1:oklch(0.646 0.222 41.116);
-  --chart-2:oklch(0.6 0.118 184.704);
   --chart-3:oklch(0.398 0.07 227.392);
   --chart-4:oklch(0.828 0.189 84.429);
   --chart-5:oklch(0.769 0.188 70.08);
@@ -48,6 +54,7 @@
   --font-mono: var(--font-geist-mono);
   --color-primary: var(--primary);
   --color-primary-200: var(--primary-200)
+  --color-success: var(--success);
   --color-accent:var(--accent)
   --color-accent-200:var(--accent-200)
   --color-accent-300:var(--accent-300)
@@ -85,7 +92,9 @@
   --radius-lg:var(--radius);
   --radius-xl:calc(var(--radius) + 4px)}
 
-@media (prefers-color-scheme: dark) {
+
+
+/* @media (prefers-color-scheme: dark) {
   :root {
     --primary:#AE0C4D;
     --primary-200:#FF2F2F;
@@ -94,7 +103,7 @@
     --accent-300:#262626;
 
   }
-}
+} */
 
 /* .dark {
   --background:#040404;

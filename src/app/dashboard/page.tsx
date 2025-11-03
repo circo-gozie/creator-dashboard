@@ -9,6 +9,21 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { Plus } from "lucide-react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
+import StatCard from "@/components/cards/stat-card";
+import LatestVideoPerformance from "@/components/cards/latest-video-performance";
+import VideoSenseTips from "@/components/cards/video-sense-tips";
+import RevenueSummary from "@/components/cards/revenue-summary";
+import LatestComments from "@/components/cards/latest-comments";
+import {
+  latestComments,
+  latestVideos,
+  dummyUpdates,
+  dummyIssues,
+} from "@/lib/dummyData";
+import TopVideos from "@/components/cards/top-videos";
+import IssuesUpdates from "@/components/cards/issues-updates";
+import InnerCirco from "@/components/cards/inner-circo";
+import { VideoDistributionChart } from "@/components/cards/view-distribution-chart";
 
 gsap.registerPlugin(useGSAP);
 
@@ -64,30 +79,108 @@ export default function Page() {
             {/* LEFT COLUMN */}
             <div className="md:basis-5/7 space-y-4">
               <div className="space-y-0 flex flex-wrap md:grid grid-cols-7 gap-4">
-                <div className="fade_in bg-accent w-full aspect-8/3 basis-full rounded-lg col-span-3" />
-                <div className="fade_in bg-accent md:w-full aspect-8/3 md:aspect-auto rounded-lg grow col-span-2" />
-                <div className="fade_in bg-accent md:w-full aspect-8/3 md:aspect-auto rounded-lg grow col-span-2" />
+                <div className="fade_in bg-accent w-full  basis-full rounded-lg col-span-3">
+                  <StatCard
+                    title={"Traffic"}
+                    stats={[
+                      {
+                        value: "24.5K",
+                        label: "impressions",
+                        percentageChange: "4.5",
+                        bullish: true,
+                      },
+                      {
+                        value: "24.5K",
+                        label: "Click-Through Rate",
+                        percentageChange: "4.5",
+                        bullish: true,
+                      },
+                    ]}
+                  />
+                </div>
+                <div className="fade_in bg-accent md:w-full rounded-lg grow col-span-2">
+                  <StatCard
+                    title={"Views"}
+                    stats={[
+                      {
+                        value: "240.5K",
+                        label: "Total number of views",
+                        percentageChange: "45",
+                        bullish: true,
+                      },
+                    ]}
+                  />
+                </div>
+                <div className="fade_in bg-accent md:w-full rounded-lg grow col-span-2">
+                  <StatCard
+                    title={"Members"}
+                    stats={[
+                      {
+                        value: "2.5K",
+                        label: "Total number of views",
+                        percentageChange: "0.5",
+                        bullish: false,
+                      },
+                    ]}
+                  />
+                </div>
               </div>
 
-              <div className="fade_in bg-secondary aspect-9/4 w-full rounded-xl md:min-h-min" />
+              <div className="fade_in bg-secondary w-full aspect-auto md:min-h-min">
+                <VideoDistributionChart />
+              </div>
 
               <div className="w-full grid gap-4 md:grid-cols-5">
-                <div className="fade_in w-full bg-accent rounded-lg aspect-7/3 md:col-span-3" />
-                <div className="fade_in w-full bg-accent rounded-lg aspect-video md:aspect-auto md:col-span-2" />
+                <div className="fade_in w-full max-w-full bg-accent rounded-lg  md:col-span-3">
+                  <LatestVideoPerformance
+                    title={"Latest video performance"}
+                    stats={{
+                      impressions: "498k",
+                      views: "300k",
+                      comments: "106",
+                      likes: "59k",
+                    }}
+                    video={{
+                      title: "How to grow your social",
+                      thumbnail:
+                        "https://cdn.pixabay.com/photo/2017/10/20/10/58/elephant-2870777_1280.jpg",
+                      timeDelta: "4 days ago",
+                    }}
+                  />
+                </div>
+                <div className="fade_in w-full bg-accent rounded-lg  md:col-span-2">
+                  <VideoSenseTips />
+                </div>
               </div>
 
               <div className="w-full grid gap-4 md:grid-cols-3">
-                <div className="fade_in w-full bg-accent h-44 rounded-lg aspect-7/3" />
-                <div className="fade_in w-full bg-accent h-64 rounded-lg aspect-video md:aspect-auto" />
-                <div className="fade_in w-full bg-accent h-74 rounded-lg aspect-video md:aspect-auto" />
+                <div className="fade_in w-full bg-accent h-fit rounded-lg sm:aspect-7/3">
+                  <IssuesUpdates items={dummyIssues} flag={"issues"} />
+                </div>
+                <div className="fade_in w-full bg-accent h-fit rounded-lg ">
+                  <IssuesUpdates items={dummyUpdates} flag={"updates"} />
+                </div>{" "}
+                <div className="fade_in w-full h-fit bg-accent rounded-lg ">
+                  <InnerCirco />
+                </div>
               </div>
             </div>
 
             {/* RIGHT COLUMN */}
             <div className="md:basis-2/7 space-y-4">
-              <div className="fade_in w-full bg-secondary rounded-lg aspect-square" />
-              <div className="fade_in w-full bg-accent rounded-lg aspect-9/10" />
-              <div className="fade_in w-full bg-accent rounded-lg aspect-7/10" />
+              <div className="fade_in w-full bg-secondary rounded-lg">
+                <RevenueSummary
+                  total={"1,228,000"}
+                  month={"145,000"}
+                  year={"467,000"}
+                />
+              </div>
+              <div className="fade_in w-full bg-accent rounded-lg ">
+                <LatestComments comments={latestComments} />
+              </div>
+              <div className="fade_in w-full bg-accent rounded-lg">
+                <TopVideos videos={latestVideos} />
+              </div>
             </div>
           </div>
         </div>
