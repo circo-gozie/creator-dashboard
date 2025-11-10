@@ -5,7 +5,7 @@ const HeaderSearch = () => {
   return (
     <div className="w-96 items-center h-11 flex rounded-3xl overflow-hidden border">
       <Input
-        className="border-0 placeholder:text-muted-foreground"
+        className="border-0 placeholder:text-muted-foreground !bg-transparent"
         placeholder="Search"
       />
       <div className="h-full w-14 bg-accent">

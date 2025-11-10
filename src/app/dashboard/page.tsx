@@ -54,7 +54,7 @@ export default function Page() {
           <div className="h-16 flex justify-between items-center px-4 w-full">
             <HeaderSearch />
             <div className="flex items-center gap-4">
-              <Button variant="muted" className="bg-accent">
+              <Button variant="muted">
                 <Plus />
                 Create Post
               </Button>
@@ -79,7 +79,7 @@ export default function Page() {
             {/* LEFT COLUMN */}
             <div className="md:basis-5/7 space-y-4">
               <div className="space-y-0 flex flex-wrap md:grid grid-cols-7 gap-4">
-                <div className="fade_in bg-accent w-full  basis-full rounded-lg col-span-3">
+                <div className="fade_in w-full  basis-full rounded-lg col-span-3">
                   <StatCard
                     title={"Traffic"}
                     stats={[
@@ -98,7 +98,7 @@ export default function Page() {
                     ]}
                   />
                 </div>
-                <div className="fade_in bg-accent md:w-full rounded-lg grow col-span-2">
+                <div className="fade_in  md:w-full rounded-lg grow col-span-2">
                   <StatCard
                     title={"Views"}
                     stats={[
@@ -111,7 +111,7 @@ export default function Page() {
                     ]}
                   />
                 </div>
-                <div className="fade_in bg-accent md:w-full rounded-lg grow col-span-2">
+                <div className="fade_in  md:w-full rounded-lg grow col-span-2">
                   <StatCard
                     title={"Members"}
                     stats={[
@@ -131,7 +131,7 @@ export default function Page() {
               </div>
 
               <div className="w-full grid gap-4 md:grid-cols-5">
-                <div className="fade_in w-full max-w-full bg-accent rounded-lg  md:col-span-3">
+                <div className="fade_in w-full max-w-full  rounded-lg  md:col-span-3">
                   <LatestVideoPerformance
                     title={"Latest video performance"}
                     stats={{
@@ -148,19 +148,19 @@ export default function Page() {
                     }}
                   />
                 </div>
-                <div className="fade_in w-full bg-accent rounded-lg  md:col-span-2">
+                <div className="fade_in w-full  rounded-lg  md:col-span-2">
                   <VideoSenseTips />
                 </div>
               </div>
 
               <div className="w-full grid gap-4 md:grid-cols-3">
-                <div className="fade_in w-full bg-accent h-fit rounded-lg sm:aspect-7/3">
+                <div className="fade_in w-full  h-fit rounded-lg sm:aspect-7/3">
                   <IssuesUpdates items={dummyIssues} flag={"issues"} />
                 </div>
-                <div className="fade_in w-full bg-accent h-fit rounded-lg ">
+                <div className="fade_in w-full  h-fit rounded-lg ">
                   <IssuesUpdates items={dummyUpdates} flag={"updates"} />
                 </div>{" "}
-                <div className="fade_in w-full h-fit bg-accent rounded-lg ">
+                <div className="fade_in w-full h-fit  rounded-lg ">
                   <InnerCirco />
                 </div>
               </div>
@@ -175,10 +175,10 @@ export default function Page() {
                   year={"467,000"}
                 />
               </div>
-              <div className="fade_in w-full bg-accent rounded-lg ">
+              <div className="fade_in w-full  rounded-lg ">
                 <LatestComments comments={latestComments} />
               </div>
-              <div className="fade_in w-full bg-accent rounded-lg">
+              <div className="fade_in w-full  rounded-lg">
                 <TopVideos videos={latestVideos} />
               </div>
             </div>
