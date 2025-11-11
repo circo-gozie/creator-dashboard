@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import EmailSignupForm from "@/components/cards/email-signup-form";
+import EmailSignupForm from "@/components/forms/email-signup-form";
 import OTP from "@/components/inputs/otp";
 
 export default function SignUpForm() {

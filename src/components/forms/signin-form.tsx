@@ -28,7 +28,7 @@ import { useState } from "react";
 import { Toggle } from "@/components/ui/toggle";
 import { CountryCodeSelector } from "../inputs/country-code-selector";
 
-interface EmailSignupFormProps {
+interface SignInFormProps {
   setGetOTP: (getOTP: boolean) => void;
 }
 const formSchema = z.object({
@@ -60,7 +60,7 @@ const formSchema = z.object({
     }),
 });
 
-export default function SignUpForm({ setGetOTP }: EmailSignupFormProps) {
+export default function SignInForm({ setGetOTP }: SignInFormProps) {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [signupMode, setSignupMode] = useState<"email" | "number">("email");
@@ -74,6 +74,15 @@ export default function SignUpForm({ setGetOTP }: EmailSignupFormProps) {
       number: "",
     },
   });
+
+  const handleNumberInput = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    onChange: (value: string) => void
+  ) => {
+    // Only allow digits
+    const value = e.target.value.replace(/\D/g, "");
+    onChange(value);
+  };
 
   // Watch password field to validate in real-time
   const password = form.watch("password");
@@ -138,10 +147,12 @@ export default function SignUpForm({ setGetOTP }: EmailSignupFormProps) {
         <Button variant={"ghost"} size={"icon"} className="bg-accent size-7">
           <ChevronLeft />
         </Button>
-        <CardTitle>Sign Up with Email or WhatsApp </CardTitle>
-        <CardDescription className="sr-only">
-          Create an account to get started.
-        </CardDescription>
+        <div className="w-grow inline-flex items-center w-full justify-between">
+          <CardTitle>Welcome back </CardTitle>
+          <CardDescription className="w-fit text-nowrap text-primary-200 ">
+            Login as a Studio
+          </CardDescription>
+        </div>
       </CardHeader>
       <CardContent>
         <form id="form-rhf-demo" onSubmit={form.handleSubmit(onSubmit)}>
@@ -172,7 +183,7 @@ export default function SignUpForm({ setGetOTP }: EmailSignupFormProps) {
                 control={form.control}
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel htmlFor="form-rhf-demo-email">
+                    <FieldLabel htmlFor="form-rhf-demo-number">
                       WhatsApp Number
                     </FieldLabel>
                     <div className="w-full flex items-center gap-1">
@@ -182,10 +193,14 @@ export default function SignUpForm({ setGetOTP }: EmailSignupFormProps) {
                       />
                       <Input
                         {...field}
-                        id="form-rhf-demo-email"
+                        id="form-rhf-demo-number"
+                        type="tel"
+                        inputMode="numeric"
+                        maxLength={15}
                         aria-invalid={fieldState.invalid}
                         placeholder="Enter your WhatsApp number"
-                        autoComplete="off"
+                        autoComplete="tel"
+                        onChange={(e) => handleNumberInput(e, field.onChange)}
                       />
                     </div>
                     {fieldState.invalid && (
@@ -205,10 +220,10 @@ export default function SignUpForm({ setGetOTP }: EmailSignupFormProps) {
                   </FieldLabel>
                   <Input
                     {...field}
-                    id="form-rhf-demo-email"
+                    id="form-rhf-demo-password"
                     aria-invalid={fieldState.invalid}
-                    placeholder="Enter your email address"
-                    autoComplete="off"
+                    placeholder="Enter your password"
+                    autoComplete="new-password"
                     type={showPassword ? "text" : "password"}
                   />
                   {fieldState.invalid && (
@@ -276,11 +291,11 @@ export default function SignUpForm({ setGetOTP }: EmailSignupFormProps) {
             className="text-foreground/70 gap-1"
             form="form-rhf-demo"
             variant="link"
-            onClick={() => router.push("/signin")}
+            onClick={() => router.push("/signup")}
           >
-            Already have an account?
+            {`Don't have an account?`}
             <span className="underline underline-offset-2 text-foreground">
-              Sign in
+              Sign Up
             </span>
           </Button>
         </Field>

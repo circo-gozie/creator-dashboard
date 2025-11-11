@@ -34,7 +34,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <div className="w-full h-svh bg-background">{children}</div>
         </ThemeProvider>
       </body>
     </html>

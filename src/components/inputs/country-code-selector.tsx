@@ -24,11 +24,15 @@ export function CountryCodeSelector({ code, setCode }: Props) {
           <ChevronDown />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56" align="start">
+      <DropdownMenuContent
+        className="w-56 bg-secondary text-foreground max-h-65 hide-scrollbar rounded-3xl"
+        align="start"
+      >
         {countryCodes.map((country) => (
           <DropdownMenuItem
             key={country.code}
             onClick={() => setCode(country.code)}
+            className="cursor-pointer hover:!bg-primary-400 hover:!text-background rounded-xl"
           >
             {country.code} - {country.name}
           </DropdownMenuItem>

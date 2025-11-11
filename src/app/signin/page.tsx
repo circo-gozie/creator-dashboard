@@ -1,15 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import EmailSignupForm from "@/components/cards/email-signup-form";
+import SignInForm from "@/components/forms/signin-form";
 import OTP from "@/components/inputs/otp";
 
-export default function SignInForm() {
+export default function SignInPage() {
   const [getOTP, setGetOTP] = useState(false);
   return (
     <div className="w-full h-svh">
       <div className="flex flex-col items-center justify-center size-full">
-        {getOTP ? <OTP /> : <EmailSignupForm setGetOTP={setGetOTP} />}
+        {getOTP ? <OTP /> : <SignInForm setGetOTP={setGetOTP} />}
       </div>
     </div>
   );

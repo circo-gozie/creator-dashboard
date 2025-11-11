@@ -19,6 +19,7 @@ import {
 import { Label } from "../ui/label";
 import { Button } from "../ui/button";
 import Spinner from "../loaders/spinner";
+import { useRouter } from "next/navigation";
 
 // Zod schema for OTP validation
 const otpSchema = z.object({
@@ -34,7 +35,7 @@ export default function OTP() {
   const [countdown, setCountdown] = useState(299);
   const [email] = useState("theweeknd@gmail.com");
   const [isSubmitting, setIsSubmitting] = useState(false);
-
+  const router = useRouter();
   const {
     control,
     handleSubmit,
@@ -61,6 +62,7 @@ export default function OTP() {
       // Handle OTP verification here
       // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 2000));
+      router.push("/setup");
     } catch (error) {
       console.error("Error verifying OTP:", error);
     } finally {

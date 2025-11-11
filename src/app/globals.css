@@ -18,16 +18,21 @@
 :root {
   --primary: #ae0c4d;
   --primary-200: #ff2f2f;
+  --primary-300: #ff2f2f;
+  --primary-400: #ffeaea;
   --success: #1aa064;
   --accent: #353535;
   --accent-200: #1a1a1a;
   --accent-300: #262626;
   --radius: 0.625rem;
   --background: #ffffff;
+  --background-2: #f7f9fc;
+  --background-3: #151515;
   --foreground: #1b1b1b;
   --foreground-2: #aaabb0;
   --foreground-3: #747474;
   --foreground-4: #2a2a2a;
+
   --primary-foreground: #ffffff;
   --primary-foreground-2: #e0e0e0;
   --primary-foreground-3: #b0b0b0;
@@ -72,14 +77,18 @@
 
 @theme inline {
   --color-background: var(--background);
+  --color-background-200: var(--background-2);
+  --color-background-300: var(--background-3);
   --color-foreground: var(--foreground);
   --color-foreground-200: var(--foreground-2);
   --color-foreground-300: var(--foreground-3);
   --color-foreground-400: var(--foreground-4);
+  --color-primary-400: var(--primary-400);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --color-primary: var(--primary);
   --color-primary-200: var(--primary-200);
+  --color-primary-300: var(--primary-300);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary-foreground-200: var(--primary-foreground-2);
   --color-primary-foreground-300: var(--primary-foreground-3);
@@ -139,6 +148,8 @@
   --accent-300: #262626;
   --radius: 0.625rem;
   --background: #040404;
+  --background-2: #000000;
+  --background-3: #151515;
   --foreground: #ffffff;
   --foreground-2: #e0e0e0;
   --foreground-3: #b0b0b0;
@@ -191,4 +202,18 @@
   body {
     @apply bg-background text-foreground;
   }
+
+  /* .bg-circo-gradient {
+    @apply bg-gradient-to-r from-[#ae0c4d] via-[#cd1942] to-[#ff2f2f];
+  } */
+}
+
+/* Hide scrollbar but keep functionality */
+.hide-scrollbar {
+  -ms-overflow-style: none; /* Internet Explorer 10+ */
+  scrollbar-width: none; /* Firefox */
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none; /* Safari and Chrome */
 }
