@@ -30,7 +30,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ApolloWrapper delay={100}>
+        <ApolloWrapper>
           <ThemeProvider
             attribute="class"
             defaultTheme="system"
