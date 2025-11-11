@@ -27,6 +27,20 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Toggle } from "@/components/ui/toggle";
 import { CountryCodeSelector } from "../inputs/country-code-selector";
+import { useLazyQuery, useMutation } from "@apollo/client/react";
+import {
+  SendAccountVerificationOTPResponse,
+  CreateUserInput,
+  CreateUserResponse,
+  SendOtpInput,
+} from "@/types/auth";
+import {
+  CHECK_EMAIL_AVAILABILITY,
+  CHECK_PHONE_NUMBER_AVAILABILITY,
+  SEND_ACCOUNT_VERIFICATION_OTP,
+  CREATE_USER,
+} from "@/graphQl/auth";
+import { deviceToken, getDeviceId, getDeviceName } from "@/lib/device-utils";
 
 interface EmailSignupFormProps {
   setGetOTP: (getOTP: boolean) => void;
@@ -65,6 +79,8 @@ export default function SignUpForm({ setGetOTP }: EmailSignupFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [signupMode, setSignupMode] = useState<"email" | "number">("email");
   const [countryCode, setCountryCode] = useState("+234");
+  const [otp, setOtp] = useState<string>("");
+  const [alreadyLinked, setAlreadyLinked] = useState(false);
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     mode: "onBlur", // Validate when field loses focus
@@ -82,6 +98,82 @@ export default function SignUpForm({ setGetOTP }: EmailSignupFormProps) {
     // Only allow digits
     const value = e.target.value.replace(/\D/g, "");
     onChange(value);
+  };
+
+  const validate = async () => {
+    if (signupMode === "email") {
+      const { data } = await checkEmail({
+        variables: {
+          email: email,
+        },
+      });
+      if (data?.checkEmailAvailability) {
+        await sendOTP({
+          variables: {
+            input: {
+              email: email,
+            },
+          },
+        });
+        // setStep("otp");
+      } else {
+        setAlreadyLinked(true);
+      }
+    } else {
+      const { data } = await checkPhoneNumber({
+        variables: {
+          input: {
+            code: countryCode,
+            number: number,
+          },
+        },
+      });
+      if (data?.checkPhoneNumberAvailability) {
+        await sendOTP({
+          variables: {
+            input: {
+              phoneNumber: {
+                code: countryCode,
+                number: number as string,
+              },
+            },
+          },
+        });
+        // setStep("otp");
+      } else {
+        setAlreadyLinked(true);
+      }
+    }
+  };
+
+  const createAccount = async () => {
+    const { data } = await createUser({
+      variables: {
+        input: {
+          email: email || undefined,
+          phoneNumber: number
+            ? {
+                code: countryCode,
+                number: number,
+              }
+            : undefined,
+          accountType: "User",
+          otp: Number(otp),
+          password: password,
+          signupPlatform: "Web",
+          deviceDetails: {
+            deviceId: getDeviceId(),
+            deviceType: "IOS",
+            deviceName: getDeviceName(),
+            deviceToken: deviceToken(),
+            appVersion: process.env.APP_VERSION || "2.0.0",
+          },
+        },
+      },
+    });
+    if (data?.createUser) {
+      router.push("/auth/onboarding");
+    }
   };
 
   // Watch password field to validate in real-time
@@ -123,23 +215,26 @@ export default function SignUpForm({ setGetOTP }: EmailSignupFormProps) {
       form.setError("number", { message: "WhatsApp number is required." });
       return;
     }
-
-    toast("You submitted the following values:", {
-      description: (
-        <pre className="bg-code text-code-foreground mt-2 w-[320px] overflow-x-auto rounded-md p-4">
-          <code>{JSON.stringify(data, null, 2)}</code>
-        </pre>
-      ),
-      position: "bottom-right",
-      classNames: {
-        content: "flex flex-col gap-2",
-      },
-      style: {
-        "--border-radius": "calc(var(--radius)  + 4px)",
-      } as React.CSSProperties,
-    });
     setGetOTP(true);
   }
+
+  const [checkEmail, { loading: checkingEmail }] = useLazyQuery<{
+    checkEmailAvailability: boolean;
+  }>(CHECK_EMAIL_AVAILABILITY);
+
+  const [checkPhoneNumber, { loading: checkingNumber }] = useLazyQuery<{
+    checkPhoneNumberAvailability: boolean;
+  }>(CHECK_PHONE_NUMBER_AVAILABILITY);
+
+  const [sendOTP, { loading: sendingOTP }] = useMutation<
+    SendAccountVerificationOTPResponse,
+    { input: SendOtpInput }
+  >(SEND_ACCOUNT_VERIFICATION_OTP);
+
+  const [createUser, { loading: creatingUser }] = useMutation<
+    { createUser: CreateUserResponse },
+    { input: CreateUserInput }
+  >(CREATE_USER);
 
   return (
     <Card className="w-full sm:max-w-md gap-4">
@@ -208,37 +303,42 @@ export default function SignUpForm({ setGetOTP }: EmailSignupFormProps) {
                 )}
               />
             )}
-            <Controller
-              name="password"
-              control={form.control}
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid} className="!relative ">
-                  <FieldLabel htmlFor="form-rhf-demo-password">
-                    Password
-                  </FieldLabel>
-                  <Input
-                    {...field}
-                    id="form-rhf-demo-password"
-                    aria-invalid={fieldState.invalid}
-                    placeholder="Enter your password"
-                    autoComplete="new-password"
-                    type={showPassword ? "text" : "password"}
-                  />
-                  {fieldState.invalid && (
-                    <FieldError errors={[fieldState.error]} />
-                  )}
-                  <Button
-                    variant="icon"
-                    type="button"
-                    size={"icon"}
-                    className="bg-transparent px-0 translate-y-3/4 absolute !w-fit top-1 right-2 "
-                    onClick={() => setShowPassword(!showPassword)}
+            {!alreadyLinked && (
+              <Controller
+                name="password"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field
+                    data-invalid={fieldState.invalid}
+                    className="!relative "
                   >
-                    {showPassword ? <Eye /> : <EyeClosed />}
-                  </Button>
-                </Field>
-              )}
-            />
+                    <FieldLabel htmlFor="form-rhf-demo-password">
+                      Password
+                    </FieldLabel>
+                    <Input
+                      {...field}
+                      id="form-rhf-demo-password"
+                      aria-invalid={fieldState.invalid}
+                      placeholder="Enter your password"
+                      autoComplete="new-password"
+                      type={showPassword ? "text" : "password"}
+                    />
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
+                    <Button
+                      variant="icon"
+                      type="button"
+                      size={"icon"}
+                      className="bg-transparent px-0 translate-y-3/4 absolute !w-fit top-1 right-2 "
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? <Eye /> : <EyeClosed />}
+                    </Button>
+                  </Field>
+                )}
+              />
+            )}
           </FieldGroup>
           <div className="w-full sm:px-8 py-2 mx-auto flex flex-wrap gap-1 justify-center">
             {validationFields.map((field) => (
