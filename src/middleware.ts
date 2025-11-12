@@ -43,7 +43,7 @@ export function middleware(request: NextRequest) {
   // Redirect root path based on authentication status
   if (pathname === "/") {
     const url = request.nextUrl.clone();
-    url.pathname = isAuthenticated ? "/dashboard" : "/signup";
+    url.pathname = isAuthenticated ? "auth/setup" : "auth/register";
     return NextResponse.redirect(url);
   }
 
@@ -64,4 +64,3 @@ export const config = {
     "/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
-

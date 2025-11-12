@@ -129,7 +129,7 @@ export default function SetupForm({ setIsSetupCompleted }: SetupFormProps) {
 
   return (
     <div className="flex size-full h-full flex-col items-center justify-center bg-background-300 py-8">
-      <Card className="bg-background w-full flex flex-row gap-0 p-0 max-w-6xl md:aspect-video relative overflow-hidden">
+      <Card className="bg-background !w-full flex flex-row gap-0 p-0 max-w-6xl md:aspect-video relative overflow-hidden">
         <div className="basis-2/5 bg-background">
           <CardHeader className="flex-col border-b-0 p-4 sm:p-8">
             <CardTitle>

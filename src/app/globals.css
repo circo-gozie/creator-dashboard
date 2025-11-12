@@ -25,7 +25,7 @@
   --accent-200: #1a1a1a;
   --accent-300: #262626;
   --radius: 0.625rem;
-  --background: #ffffff;
+  --background: #e2e2e2;
   --background-2: #f7f9fc;
   --background-3: #151515;
   --foreground: #1b1b1b;
@@ -51,6 +51,7 @@
   --error-3: #ffe0d5;
   --error-4: #ff642b;
   --border: var(--secondary-2);
+  --card-background: #ffffff;
   /* other */
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
@@ -114,6 +115,7 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --color-border: var(--secondary-2);
+  --color-card-background: var(--card-background);
 
   /* other */
   --color-card-foreground: var(--card-foreground);
@@ -171,6 +173,7 @@
   --error-2: #e4626f;
   --error-3: #ffe0d5;
   --error-4: #ff642b;
+  --card-background: #1a1a1a;
   /* other */
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);

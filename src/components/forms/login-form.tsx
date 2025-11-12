@@ -22,45 +22,57 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { ChevronLeft, CircleCheckIcon, Eye, EyeClosed } from "lucide-react";
+import { CheckCircle2Icon, ChevronLeft, Eye, EyeClosed } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Toggle } from "@/components/ui/toggle";
 import { CountryCodeSelector } from "../inputs/country-code-selector";
+import { useMutation } from "@apollo/client/react";
+import { VERIFY_CREDENTIALS } from "@/graphQl/auth";
+import {
+  VerifyCredentialsInput,
+  VerifyCredentialsResponse,
+} from "@/types/auth";
+import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 
 interface SignInFormProps {
+  setLoginData: (data: {
+    email?: string;
+    phoneNumber?: { code: string; number: string };
+    password: string;
+    code: string;
+  }) => void;
   setGetOTP: (getOTP: boolean) => void;
 }
-const formSchema = z.object({
+const emailSchema = z.object({
   email: z
     .string()
-    .optional()
-    .refine((val) => !val || z.string().email().safeParse(val).success, {
-      message: "Please enter a valid email address.",
-    })
-    .refine((val) => !val || val.length <= 254, {
-      message: "Email must be at most 254 characters.",
-    }),
-  password: z
-    .string()
-    .min(8, "Password must be at least 8 characters.")
-    .max(128, "Password must be at most 128 characters.")
-    .regex(
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])/,
-      "Password must contain at least one lowercase letter, one uppercase letter, one number, and one special character (@$!%*?&)."
-    ),
-  number: z
-    .string()
-    .optional()
-    .refine((val) => !val || (val.length >= 1 && val.length <= 15), {
-      message: "Number must be between 1 and 15 characters.",
-    })
-    .refine((val) => !val || /^\d+$/.test(val), {
-      message: "Number must contain only digits.",
-    }),
+    .min(1, "Email is required")
+    .email("Please enter a valid email address")
+    .max(254, "Email must be at most 254 characters"),
+  password: z.string().min(1, "Password is required"),
+  number: z.string().optional(),
 });
 
-export default function SignInForm({ setGetOTP }: SignInFormProps) {
+const phoneSchema = z.object({
+  email: z.string().optional(),
+  password: z.string().min(1, "Password is required"),
+  number: z
+    .string()
+    .min(1, "Phone number is required")
+    .max(15, "Number must be between 1 and 15 characters")
+    .regex(/^\d+$/, "Number must contain only digits"),
+});
+
+const formSchema = z.object({
+  email: z.string().optional(),
+  password: z.string().optional(),
+  number: z.string().optional(),
+});
+
+export default function SignInForm({
+  setLoginData,
+  setGetOTP,
+}: SignInFormProps) {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [signupMode, setSignupMode] = useState<"email" | "number">("email");
@@ -84,77 +96,117 @@ export default function SignInForm({ setGetOTP }: SignInFormProps) {
     onChange(value);
   };
 
-  // Watch password field to validate in real-time
-  const password = form.watch("password");
-
-  // Validation checks for password requirements
-  const validationChecks = {
-    hasUppercase: /[A-Z]/.test(password),
-    hasLowercase: /[a-z]/.test(password),
-    hasNumber: /\d/.test(password),
-    hasSpecialChar: /[@$!%*?&]/.test(password),
-    hasMinLength: password.length >= 8,
-  };
-
-  const validationFields = [
-    { label: "Uppercase", isValid: validationChecks.hasUppercase },
-    { label: "Lowercase", isValid: validationChecks.hasLowercase },
-    { label: "Number", isValid: validationChecks.hasNumber },
-    { label: "Special Character", isValid: validationChecks.hasSpecialChar },
-    { label: "Minimum 8 Characters", isValid: validationChecks.hasMinLength },
-  ];
-
-  // Check if the form is valid based on the current signup mode
+  // Check if the form is valid based on the current login mode
   const email = form.watch("email");
   const number = form.watch("number");
+  const password = form.watch("password");
+
   const isFormValid =
+    !!password &&
     (signupMode === "email"
       ? !!email && !form.formState.errors.email
-      : !!number && !form.formState.errors.number) &&
-    Object.values(validationChecks).every((check) => check);
+      : !!number && !form.formState.errors.number);
 
-  function onSubmit(data: z.infer<typeof formSchema>) {
-    // Validate that the correct field is filled based on signup mode
-    if (signupMode === "email" && !data.email) {
-      form.setError("email", { message: "Email is required." });
-      return;
-    }
-    if (signupMode === "number" && !data.number) {
-      form.setError("number", { message: "WhatsApp number is required." });
-      return;
+  const [verifyCredentials, { loading: verifying }] = useMutation<
+    { verifyCredentials: VerifyCredentialsResponse },
+    { input: VerifyCredentialsInput }
+  >(VERIFY_CREDENTIALS, {
+    onCompleted: (data) => {
+      if (!data.verifyCredentials.error && data.verifyCredentials.data.code) {
+        toast.success(
+          "Credentials verified! Check your " +
+            (signupMode === "email" ? "email" : "WhatsApp") +
+            " for OTP."
+        );
+
+        // Store login data including the OTP code for the final login step
+        setLoginData({
+          email: signupMode === "email" ? email : undefined,
+          phoneNumber:
+            signupMode === "number"
+              ? { code: countryCode, number: number as string }
+              : undefined,
+          password: password as string,
+          code: data.verifyCredentials.data.code,
+        });
+
+        setGetOTP(true);
+      } else {
+        toast.error(data.verifyCredentials.message || "Invalid credentials");
+      }
+    },
+    onError: (error) => {
+      toast.error(
+        error.message || "Failed to verify credentials. Please try again."
+      );
+    },
+  });
+
+  async function onSubmit(data: z.infer<typeof formSchema>) {
+    // Validate based on login mode
+    if (signupMode === "email") {
+      const result = emailSchema.safeParse(data);
+      if (!result.success) {
+        const errors = result.error.flatten().fieldErrors;
+        if (errors.email && errors.email[0]) {
+          form.setError("email", { message: errors.email[0] });
+        }
+        if (errors.password && errors.password[0]) {
+          form.setError("password", { message: errors.password[0] });
+        }
+        return;
+      }
+    } else {
+      const result = phoneSchema.safeParse(data);
+      if (!result.success) {
+        const errors = result.error.flatten().fieldErrors;
+        if (errors.number && errors.number[0]) {
+          form.setError("number", { message: errors.number[0] });
+        }
+        if (errors.password && errors.password[0]) {
+          form.setError("password", { message: errors.password[0] });
+        }
+        return;
+      }
     }
 
-    toast("You submitted the following values:", {
-      description: (
-        <pre className="bg-code text-code-foreground mt-2 w-[320px] overflow-x-auto rounded-md p-4">
-          <code>{JSON.stringify(data, null, 2)}</code>
-        </pre>
-      ),
-      position: "bottom-right",
-      classNames: {
-        content: "flex flex-col gap-2",
-      },
-      style: {
-        "--border-radius": "calc(var(--radius)  + 4px)",
-      } as React.CSSProperties,
-    });
-    setGetOTP(true);
+    // Verify credentials
+    try {
+      await verifyCredentials({
+        variables: {
+          input: {
+            email: signupMode === "email" ? data.email : undefined,
+            phoneNumber:
+              signupMode === "number"
+                ? { code: countryCode, number: data.number as string }
+                : undefined,
+            password: data.password as string,
+          },
+        },
+      });
+    } catch (error) {
+      console.error("Verify credentials error:", error);
+    }
   }
 
   return (
-    <Card className="w-full sm:max-w-md gap-4">
+    <Card>
       <CardHeader>
-        <Button variant={"ghost"} size={"icon"} className="bg-accent size-7">
-          <ChevronLeft />
+        <Button
+          variant={"ghost"}
+          size={"icon"}
+          className="bg-background dark:bg-accent size-7"
+        >
+          <ChevronLeft onClick={() => router.replace("/auth/register")} />
         </Button>
         <div className="w-grow inline-flex items-center w-full justify-between">
           <CardTitle>Welcome back </CardTitle>
           <CardDescription className="w-fit text-nowrap text-primary-200 ">
-            Login as a Studio
+            Login as a User
           </CardDescription>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-4">
         <form id="form-rhf-demo" onSubmit={form.handleSubmit(onSubmit)}>
           <FieldGroup>
             {signupMode === "email" ? (
@@ -242,24 +294,15 @@ export default function SignInForm({ setGetOTP }: SignInFormProps) {
               )}
             />
           </FieldGroup>
-          <div className="w-full sm:px-8 py-2 mx-auto flex flex-wrap gap-1 justify-center">
-            {validationFields.map((field) => (
-              <Toggle
-                key={field.label}
-                pressed={field.isValid}
-                disabled
-                aria-label={`${field.label} requirement ${
-                  field.isValid ? "met" : "not met"
-                }`}
-                size="sm"
-                className="data-[state=on]:bg-transparent data-[state=on]:*:[svg]:fill-primary data-[state=on]:*:[svg]:stroke-foreground cursor-default"
-              >
-                <CircleCheckIcon className="transition-colors" />
-                {field.label}
-              </Toggle>
-            ))}
-          </div>
         </form>
+
+        <Alert>
+          <CheckCircle2Icon />
+          <AlertTitle>Success! Your changes have been saved</AlertTitle>
+          <AlertDescription>
+            This is an alert with icon, title and description.
+          </AlertDescription>
+        </Alert>
       </CardContent>
       <CardFooter>
         <Field orientation="horizontal" className="flex flex-col gap-4">
@@ -270,6 +313,7 @@ export default function SignInForm({ setGetOTP }: SignInFormProps) {
             onClick={() => {
               setSignupMode(signupMode === "email" ? "number" : "email");
               form.reset();
+              form.clearErrors();
             }}
           >
             {signupMode === "email"
@@ -281,9 +325,9 @@ export default function SignInForm({ setGetOTP }: SignInFormProps) {
             className="w-full"
             form="form-rhf-demo"
             size={"lg"}
-            disabled={form.formState.isSubmitting || !isFormValid}
+            disabled={verifying || !isFormValid}
           >
-            {form.formState.isSubmitting ? "Submitting..." : "Next"}
+            {verifying ? "Verifying..." : "Sign In"}
           </Button>
 
           <Button
@@ -291,7 +335,7 @@ export default function SignInForm({ setGetOTP }: SignInFormProps) {
             className="text-foreground/70 gap-1"
             form="form-rhf-demo"
             variant="link"
-            onClick={() => router.push("/signup")}
+            onClick={() => router.push("/auth/signup")}
           >
             {`Don't have an account?`}
             <span className="underline underline-offset-2 text-foreground">

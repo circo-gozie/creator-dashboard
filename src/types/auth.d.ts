@@ -36,6 +36,10 @@ export interface LoginResponse {
   phoneNumber: PhoneNumberInput;
   signupPlatform: string;
   email: string;
+  accessToken: string;
+  refreshToken: string;
+  isPhoneVerified: boolean;
+  isEmailVerified: boolean;
   deviceDetails: DeviceDetailsInput;
   profilePicture: ProfilePictureInput;
   bio: string;
@@ -114,7 +118,7 @@ export interface DeviceDetailsInput {
   deviceName: string;
   deviceId: string;
   deviceToken: string;
-  deviceType: string;
+  deviceType: "IOS" | "Android";
 }
 export interface LocationDataInput {
   latitude: number;

@@ -19,9 +19,12 @@ import {
 import { Label } from "../ui/label";
 import { Button } from "../ui/button";
 import { useMutation } from "@apollo/client/react";
-import { SEND_ACCOUNT_VERIFICATION_OTP } from "@/graphQl/auth";
-import { SendOtpInput, SendAccountVerificationOTPResponse } from "@/types/auth";
+import { LOGIN } from "@/graphQl/auth";
+import { LoginDataInput, LoginResponse } from "@/types/auth";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
+import { setCookie, getCookie } from "cookies-next";
+import Spinner from "../loaders/spinner";
 
 // Zod schema for OTP validation
 const otpSchema = z.object({
@@ -33,66 +36,80 @@ const otpSchema = z.object({
 
 type OTPFormData = z.infer<typeof otpSchema>;
 
-interface OTPProps {
-  userData: {
+interface LoginOTPProps {
+  loginData: {
     email?: string;
     phoneNumber?: { code: string; number: string };
+    password: string;
+    code: string;
   };
   signupMode: "email" | "number";
-  setStep: (step: "email" | "password" | "otp") => void;
-  setVerifiedOtp: (otp: string) => void;
 }
 
-export default function OTP({ userData, signupMode, setStep, setVerifiedOtp }: OTPProps) {
+export default function LoginOTP({ loginData, signupMode }: LoginOTPProps) {
   const [countdown, setCountdown] = useState(299);
+  const router = useRouter();
+
   const {
     control,
     handleSubmit,
-    formState: { errors, isValid, isDirty },
+    formState: { errors, isValid },
   } = useForm<OTPFormData>({
     resolver: zodResolver(otpSchema),
     mode: "onChange",
     defaultValues: {
-      otp: "",
+      otp: loginData.code, // Pre-fill with the code from verify credentials
     },
   });
 
-  // Apollo mutations
-  const [resendOTP, { loading: resendingOTP }] = useMutation<
-    SendAccountVerificationOTPResponse,
-    { input: SendOtpInput }
-  >(SEND_ACCOUNT_VERIFICATION_OTP, {
-    onCompleted: () => {
-      toast.success("OTP resent successfully!");
-      setCountdown(299); // Reset countdown
+  // Apollo mutation
+  const [login, { loading: loggingIn }] = useMutation<
+    { login: LoginResponse },
+    { input: LoginDataInput }
+  >(LOGIN, {
+    onCompleted: (data) => {
+      // Store tokens in cookies
+      setCookie("accessToken", data.login.accessToken, {
+        expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      }); // 7 days
+      setCookie("refreshToken", data.login.refreshToken, {
+        expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      }); // 30 days
+
+      toast.success("Login successful!");
+
+      // Redirect based on account setup status
+      if (data.login.existingUser) {
+        router.push("/"); // Existing user, go to home
+      } else {
+        router.push("/auth/setup"); // New user, complete setup
+      }
     },
     onError: (error) => {
-      toast.error(error.message || "Failed to resend OTP.");
+      toast.error(error.message || "Failed to login. Please try again.");
     },
   });
-
-  const handleResendOTP = async () => {
-    await resendOTP({
-      variables: {
-        input: signupMode === "email"
-          ? { email: userData.email }
-          : { phoneNumber: userData.phoneNumber! },
-      },
-    });
-  };
 
   // Function to call when countdown reaches 0
   const handleCountdownComplete = () => {
     toast.info("OTP expired. Please request a new code.");
   };
 
-  const onSubmit = (data: OTPFormData) => {
-    // Store the OTP for later use when creating the user
-    setVerifiedOtp(data.otp);
-    
-    // Move to password step
-    toast.success("OTP received! Now create your password.");
-    setStep("password");
+  const onSubmit = async (data: OTPFormData) => {
+    try {
+      await login({
+        variables: {
+          input: {
+            email: loginData.email || undefined,
+            phoneNumber: loginData.phoneNumber || undefined,
+            password: loginData.password,
+            code: Number(data.otp),
+          },
+        },
+      });
+    } catch (error) {
+      console.error("Login error:", error);
+    }
   };
 
   useEffect(() => {
@@ -131,11 +148,11 @@ export default function OTP({ userData, signupMode, setStep, setVerifiedOtp }: O
           <CardDescription className="w-full ">
             {"We've"} sent a 6-digit code to
             <span className="font-medium px-0.5">
-              {signupMode === "email" 
-                ? userData.email 
-                : `+${userData.phoneNumber?.code} ${userData.phoneNumber?.number}`
-              }
-            </span> Enter it below to continue.
+              {signupMode === "email"
+                ? loginData.email
+                : `+${loginData.phoneNumber?.code} ${loginData.phoneNumber?.number}`}
+            </span>{" "}
+            Enter it below to continue.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-2 items-center justify-center">
@@ -184,10 +201,11 @@ export default function OTP({ userData, signupMode, setStep, setVerifiedOtp }: O
                 type="button"
                 variant="link"
                 className="text-primary p-0 h-auto"
-                onClick={handleResendOTP}
-                disabled={resendingOTP}
+                onClick={() => {
+                  toast.info("Please go back and re-enter your credentials");
+                }}
               >
-                {resendingOTP ? "Resending..." : "Resend code"}
+                Go back
               </Button>
             )}
           </div>
@@ -195,9 +213,15 @@ export default function OTP({ userData, signupMode, setStep, setVerifiedOtp }: O
             type="submit"
             className="w-full"
             size={"lg"}
-            disabled={!isDirty || !isValid}
+            disabled={!isValid || loggingIn}
           >
-            Continue
+            {loggingIn ? (
+              <>
+                Signing in <Spinner />
+              </>
+            ) : (
+              "Sign In"
+            )}
           </Button>
         </CardFooter>
       </form>

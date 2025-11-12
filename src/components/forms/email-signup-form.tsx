@@ -22,7 +22,13 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { ChevronLeft, CircleCheckIcon, Eye, EyeClosed } from "lucide-react";
+import {
+  CheckCircle2Icon,
+  ChevronLeft,
+  CircleCheckIcon,
+  Eye,
+  EyeClosed,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Toggle } from "@/components/ui/toggle";
@@ -30,60 +36,89 @@ import { CountryCodeSelector } from "../inputs/country-code-selector";
 import { useLazyQuery, useMutation } from "@apollo/client/react";
 import {
   SendAccountVerificationOTPResponse,
+  SendOtpInput,
   CreateUserInput,
   CreateUserResponse,
-  SendOtpInput,
 } from "@/types/auth";
+import { deviceToken, getDeviceId, getDeviceName } from "@/lib/device-utils";
 import {
   CHECK_EMAIL_AVAILABILITY,
   CHECK_PHONE_NUMBER_AVAILABILITY,
   SEND_ACCOUNT_VERIFICATION_OTP,
   CREATE_USER,
 } from "@/graphQl/auth";
-import { deviceToken, getDeviceId, getDeviceName } from "@/lib/device-utils";
-
+import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
+import Link from "next/link";
 interface EmailSignupFormProps {
-  setGetOTP: (getOTP: boolean) => void;
+  step: "email" | "password" | "otp";
+  setStep: (step: "email" | "password" | "otp") => void;
+  userData: {
+    email?: string;
+    phoneNumber?: { code: string; number: string };
+  };
+  setUserData: (data: {
+    email?: string;
+    phoneNumber?: { code: string; number: string };
+  }) => void;
+  verifiedOtp: string;
 }
-const formSchema = z.object({
+// Create separate schemas for email and phone validation
+const emailSchema = z.object({
   email: z
     .string()
-    .optional()
-    .refine((val) => !val || z.string().email().safeParse(val).success, {
-      message: "Please enter a valid email address.",
-    })
-    .refine((val) => !val || val.length <= 254, {
-      message: "Email must be at most 254 characters.",
-    }),
-  password: z
-    .string()
-    .min(8, "Password must be at least 8 characters.")
-    .max(128, "Password must be at most 128 characters.")
-    .regex(
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])/,
-      "Password must contain at least one lowercase letter, one uppercase letter, one number, and one special character (@$!%*?&)."
-    ),
-  number: z
-    .string()
-    .optional()
-    .refine((val) => !val || (val.length >= 1 && val.length <= 15), {
-      message: "Number must be between 1 and 15 characters.",
-    })
-    .refine((val) => !val || /^\d+$/.test(val), {
-      message: "Number must contain only digits.",
-    }),
+    .min(1, "Email is required")
+    .email("Please enter a valid email address")
+    .max(254, "Email must be at most 254 characters"),
+  password: z.string().optional(),
+  number: z.string().optional(),
 });
 
-export default function SignUpForm({ setGetOTP }: EmailSignupFormProps) {
+const phoneSchema = z.object({
+  email: z.string().optional(),
+  password: z.string().optional(),
+  number: z
+    .string()
+    .min(1, "Phone number is required")
+    .min(1, "Number must be between 1 and 15 characters")
+    .max(15, "Number must be between 1 and 15 characters")
+    .regex(/^\d+$/, "Number must contain only digits"),
+});
+
+const passwordSchema = z.object({
+  email: z.string().optional(),
+  number: z.string().optional(),
+  password: z
+    .string()
+    .min(8, "Password must be at least 8 characters")
+    .max(128, "Password must be at most 128 characters")
+    .regex(
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])/,
+      "Password must contain at least one lowercase letter, one uppercase letter, one number, and one special character (@$!%*?&)"
+    ),
+});
+
+// Base schema with all optional fields
+const formSchema = z.object({
+  email: z.string().optional(),
+  password: z.string().optional(),
+  number: z.string().optional(),
+});
+
+export default function SignUpForm({
+  step,
+  setStep,
+  userData,
+  setUserData,
+  verifiedOtp,
+}: EmailSignupFormProps) {
   const router = useRouter();
   const [showPassword, setShowPassword] = useState(false);
   const [signupMode, setSignupMode] = useState<"email" | "number">("email");
   const [countryCode, setCountryCode] = useState("+234");
-  const [otp, setOtp] = useState<string>("");
-  const [alreadyLinked, setAlreadyLinked] = useState(false);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    mode: "onBlur", // Validate when field loses focus
+    mode: "onBlur",
     defaultValues: {
       email: "",
       password: "",
@@ -101,83 +136,93 @@ export default function SignUpForm({ setGetOTP }: EmailSignupFormProps) {
   };
 
   const validate = async () => {
-    if (signupMode === "email") {
-      const { data } = await checkEmail({
-        variables: {
-          email: email,
-        },
-      });
-      if (data?.checkEmailAvailability) {
-        await sendOTP({
+    try {
+      if (signupMode === "email") {
+        // Check email availability
+        const { data } = await checkEmail({
           variables: {
-            input: {
-              email: email,
-            },
+            email: email,
           },
         });
-        // setStep("otp");
-      } else {
-        setAlreadyLinked(true);
-      }
-    } else {
-      const { data } = await checkPhoneNumber({
-        variables: {
-          input: {
-            code: countryCode,
-            number: number,
-          },
-        },
-      });
-      if (data?.checkPhoneNumberAvailability) {
-        await sendOTP({
-          variables: {
-            input: {
-              phoneNumber: {
-                code: countryCode,
-                number: number as string,
+
+        if (data?.checkEmailAvailability) {
+          // Email is available, send OTP
+          await sendOTP({
+            variables: {
+              input: {
+                email: email,
               },
             },
+          });
+
+          // Save user data for later use
+          setUserData({ email: email });
+
+          // Move to OTP step
+          toast.success("OTP sent to your email!");
+          setStep("otp");
+        } else {
+          // Email already taken
+          toast.error(
+            "This email is already registered. Please sign in instead."
+          );
+          form.setError("email", {
+            message: "This email is already registered",
+          });
+        }
+      } else {
+        // Check phone number availability
+        const { data } = await checkPhoneNumber({
+          variables: {
+            input: {
+              code: countryCode,
+              number: number,
+            },
           },
         });
-        // setStep("otp");
-      } else {
-        setAlreadyLinked(true);
-      }
-    }
-  };
 
-  const createAccount = async () => {
-    const { data } = await createUser({
-      variables: {
-        input: {
-          email: email || undefined,
-          phoneNumber: number
-            ? {
-                code: countryCode,
-                number: number,
-              }
-            : undefined,
-          accountType: "User",
-          otp: Number(otp),
-          password: password,
-          signupPlatform: "Web",
-          deviceDetails: {
-            deviceId: getDeviceId(),
-            deviceType: "IOS",
-            deviceName: getDeviceName(),
-            deviceToken: deviceToken(),
-            appVersion: process.env.APP_VERSION || "2.0.0",
-          },
-        },
-      },
-    });
-    if (data?.createUser) {
-      router.push("/auth/onboarding");
+        if (data?.checkPhoneNumberAvailability) {
+          // Phone number is available, send OTP
+          await sendOTP({
+            variables: {
+              input: {
+                phoneNumber: {
+                  code: countryCode,
+                  number: number as string,
+                },
+              },
+            },
+          });
+
+          // Save user data for later use
+          setUserData({
+            phoneNumber: {
+              code: countryCode,
+              number: number as string,
+            },
+          });
+
+          // Move to OTP step
+          toast.success("OTP sent to your WhatsApp!");
+          setStep("otp");
+        } else {
+          // Phone number already taken
+          toast.error(
+            "This number is already registered. Please sign in instead."
+          );
+          form.setError("number", {
+            message: "This number is already registered",
+          });
+        }
+      }
+    } catch (error) {
+      toast.error("Failed to verify. Please try again.");
+      console.error("Validation error:", error);
     }
   };
 
   // Watch password field to validate in real-time
-  const password = form.watch("password");
+  const password = form.watch("password") || "";
 
   // Validation checks for password requirements
   const validationChecks = {
@@ -196,26 +241,91 @@ export default function SignUpForm({ setGetOTP }: EmailSignupFormProps) {
     { label: "Minimum 8 Characters", isValid: validationChecks.hasMinLength },
   ];
 
-  // Check if the form is valid based on the current signup mode
+  // Check if the form is valid based on the current signup mode and step
   const email = form.watch("email");
   const number = form.watch("number");
-  const isFormValid =
-    (signupMode === "email"
-      ? !!email && !form.formState.errors.email
-      : !!number && !form.formState.errors.number) &&
-    Object.values(validationChecks).every((check) => check);
 
-  function onSubmit(data: z.infer<typeof formSchema>) {
-    // Validate that the correct field is filled based on signup mode
-    if (signupMode === "email" && !data.email) {
-      form.setError("email", { message: "Email is required." });
-      return;
+  const isFormValid =
+    step === "email"
+      ? signupMode === "email"
+        ? !!email && !form.formState.errors.email
+        : !!number && !form.formState.errors.number
+      : step === "password"
+      ? !!password &&
+        !form.formState.errors.password &&
+        Object.values(validationChecks).every((check) => check)
+      : false;
+
+  async function onSubmit(data: z.infer<typeof formSchema>) {
+    // Manual validation based on signup mode and step
+    if (step === "email") {
+      // Validate email or phone number
+      if (signupMode === "email") {
+        const result = emailSchema.safeParse(data);
+        if (!result.success) {
+          const errors = result.error.flatten().fieldErrors;
+          if (errors.email && errors.email[0]) {
+            form.setError("email", { message: errors.email[0] });
+          }
+          return;
+        }
+      } else {
+        const result = phoneSchema.safeParse(data);
+        if (!result.success) {
+          const errors = result.error.flatten().fieldErrors;
+          if (errors.number && errors.number[0]) {
+            form.setError("number", { message: errors.number[0] });
+          }
+          return;
+        }
+      }
+
+      // Validation passed, proceed to check availability and send OTP
+      await validate();
+    } else if (step === "password") {
+      // Validate password
+      const result = passwordSchema.safeParse(data);
+      if (!result.success) {
+        const errors = result.error.flatten().fieldErrors;
+        if (errors.password && errors.password[0]) {
+          form.setError("password", { message: errors.password[0] });
+        }
+        return;
+      }
+
+      // Password validation passed, create user account
+      if (!data.password) {
+        toast.error("Password is required");
+        return;
+      }
+
+      // Log the data being sent
+      const userInput: CreateUserInput = {
+        email: userData.email || undefined,
+        phoneNumber: userData.phoneNumber || undefined,
+        password: data.password,
+        accountType: "User",
+        otp: Number(verifiedOtp),
+        signupPlatform: "Web",
+        deviceDetails: {
+          deviceId: getDeviceId(),
+          deviceType: "Android", // Backend only accepts IOS or Android
+          deviceName: getDeviceName(),
+          deviceToken: deviceToken(),
+          appVersion: process.env.NEXT_PUBLIC_APP_VERSION || "2.0.0",
+        },
+      };
+
+      try {
+        await createUser({
+          variables: {
+            input: userInput,
+          },
+        });
+      } catch (error) {
+        console.error("Error creating account:", error);
+      }
     }
-    if (signupMode === "number" && !data.number) {
-      form.setError("number", { message: "WhatsApp number is required." });
-      return;
-    }
-    setGetOTP(true);
   }
 
   const [checkEmail, { loading: checkingEmail }] = useLazyQuery<{
@@ -234,12 +344,27 @@ export default function SignUpForm({ setGetOTP }: EmailSignupFormProps) {
   const [createUser, { loading: creatingUser }] = useMutation<
     { createUser: CreateUserResponse },
     { input: CreateUserInput }
-  >(CREATE_USER);
+  >(CREATE_USER, {
+    onCompleted: () => {
+      toast.success("Account created successfully!");
+      router.push("/auth/setup");
+    },
+    onError: (error) => {
+      toast.error(
+        error.message || "Failed to create account. Please try again."
+      );
+    },
+  });
 
   return (
-    <Card className="w-full sm:max-w-md gap-4">
+    <Card className="w-full  gap-4">
       <CardHeader>
-        <Button variant={"ghost"} size={"icon"} className="bg-accent size-7">
+        <Button
+          onClick={() => router.back()}
+          variant={"ghost"}
+          size={"icon"}
+          className="bg-background dark:bg-accent size-7"
+        >
           <ChevronLeft />
         </Button>
         <CardTitle>Sign Up with Email or WhatsApp </CardTitle>
@@ -250,60 +375,80 @@ export default function SignUpForm({ setGetOTP }: EmailSignupFormProps) {
       <CardContent>
         <form id="form-rhf-demo" onSubmit={form.handleSubmit(onSubmit)}>
           <FieldGroup>
-            {signupMode === "email" ? (
-              <Controller
-                name="email"
-                control={form.control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel htmlFor="form-rhf-demo-email">Email</FieldLabel>
-                    <Input
-                      {...field}
-                      id="form-rhf-demo-email"
-                      aria-invalid={fieldState.invalid}
-                      placeholder="Enter your email address"
-                      autoComplete="off"
-                    />
-                    {fieldState.invalid && (
-                      <FieldError errors={[fieldState.error]} />
-                    )}
-                  </Field>
-                )}
-              />
-            ) : (
-              <Controller
-                name="number"
-                control={form.control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel htmlFor="form-rhf-demo-number">
-                      WhatsApp Number
-                    </FieldLabel>
-                    <div className="w-full flex items-center gap-1">
-                      <CountryCodeSelector
-                        code={countryCode}
-                        setCode={setCountryCode}
-                      />
+            {step === "email" &&
+              (signupMode === "email" ? (
+                <Controller
+                  name="email"
+                  control={form.control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
+                      <FieldLabel htmlFor="form-rhf-demo-email">
+                        Email
+                      </FieldLabel>
                       <Input
                         {...field}
-                        id="form-rhf-demo-number"
-                        type="tel"
-                        inputMode="numeric"
-                        maxLength={15}
+                        id="form-rhf-demo-email"
                         aria-invalid={fieldState.invalid}
-                        placeholder="Enter your WhatsApp number"
-                        autoComplete="tel"
-                        onChange={(e) => handleNumberInput(e, field.onChange)}
+                        placeholder="Enter your email address"
+                        autoComplete="off"
                       />
-                    </div>
-                    {fieldState.invalid && (
-                      <FieldError errors={[fieldState.error]} />
-                    )}
-                  </Field>
-                )}
-              />
-            )}
-            {!alreadyLinked && (
+                      {fieldState.invalid && (
+                        <FieldError errors={[fieldState.error]} />
+                      )}
+                    </Field>
+                  )}
+                />
+              ) : (
+                <Controller
+                  name="number"
+                  control={form.control}
+                  render={({ field, fieldState }) => (
+                    <Field data-invalid={fieldState.invalid}>
+                      <FieldLabel htmlFor="form-rhf-demo-number">
+                        WhatsApp Number
+                      </FieldLabel>
+                      <div className="w-full flex items-center gap-1">
+                        <CountryCodeSelector
+                          code={countryCode}
+                          setCode={setCountryCode}
+                        />
+                        <Input
+                          {...field}
+                          id="form-rhf-demo-number"
+                          type="tel"
+                          inputMode="numeric"
+                          maxLength={15}
+                          aria-invalid={fieldState.invalid}
+                          placeholder="Enter your WhatsApp number"
+                          autoComplete="tel"
+                          onChange={(e) => handleNumberInput(e, field.onChange)}
+                        />
+                      </div>
+                      {fieldState.invalid && (
+                        <FieldError errors={[fieldState.error]} />
+                      )}
+                    </Field>
+                  )}
+                />
+              ))}
+
+            <Alert className="bg-[#FFECD5] *:text-[#C86F02]">
+              <CheckCircle2Icon className="stroke-[#C86F02]" />
+
+              <AlertDescription className="flex justify-start wrap-anywhere gap-1">
+                <p>
+                  This email address is already linked to an existing account.
+                  To continue
+                  <Link
+                    className="ps-0.5 underline underline-offset-2"
+                    href={"/auth/login"}
+                  >
+                     sign in.
+                  </Link>
+                </p>
+              </AlertDescription>
+            </Alert>
+            {step === "password" && (
               <Controller
                 name="password"
                 control={form.control}
@@ -340,62 +485,83 @@ export default function SignUpForm({ setGetOTP }: EmailSignupFormProps) {
               />
             )}
           </FieldGroup>
-          <div className="w-full sm:px-8 py-2 mx-auto flex flex-wrap gap-1 justify-center">
-            {validationFields.map((field) => (
-              <Toggle
-                key={field.label}
-                pressed={field.isValid}
-                disabled
-                aria-label={`${field.label} requirement ${
-                  field.isValid ? "met" : "not met"
-                }`}
-                size="sm"
-                className="data-[state=on]:bg-transparent data-[state=on]:*:[svg]:fill-primary data-[state=on]:*:[svg]:stroke-foreground cursor-default"
-              >
-                <CircleCheckIcon className="transition-colors" />
-                {field.label}
-              </Toggle>
-            ))}
-          </div>
+          {step === "password" && (
+            <div className="w-full sm:px-8 py-2 mx-auto flex flex-wrap gap-1 justify-center">
+              {validationFields.map((field) => (
+                <Toggle
+                  key={field.label}
+                  pressed={field.isValid}
+                  disabled
+                  aria-label={`${field.label} requirement ${
+                    field.isValid ? "met" : "not met"
+                  }`}
+                  size="sm"
+                  className="data-[state=on]:bg-transparent data-[state=on]:*:[svg]:fill-primary data-[state=on]:*:[svg]:stroke-foreground cursor-default"
+                >
+                  <CircleCheckIcon className="transition-colors" />
+                  {field.label}
+                </Toggle>
+              ))}
+            </div>
+          )}
         </form>
       </CardContent>
       <CardFooter>
         <Field orientation="horizontal" className="flex flex-col gap-4">
-          <Button
-            type="button"
-            variant="link"
-            className="text-foreground underline underline-offset-2"
-            onClick={() => {
-              setSignupMode(signupMode === "email" ? "number" : "email");
-              form.reset();
-            }}
-          >
-            {signupMode === "email"
-              ? "Use WhatsApp number instead"
-              : "Use email instead"}
-          </Button>
+          {step === "email" && (
+            <Button
+              type="button"
+              variant="link"
+              className="text-foreground underline underline-offset-2"
+              onClick={() => {
+                setSignupMode(signupMode === "email" ? "number" : "email");
+                form.reset();
+                form.clearErrors();
+              }}
+            >
+              {signupMode === "email"
+                ? "Use WhatsApp number instead"
+                : "Use email instead"}
+            </Button>
+          )}
           <Button
             type="submit"
             className="w-full"
             form="form-rhf-demo"
             size={"lg"}
-            disabled={form.formState.isSubmitting || !isFormValid}
+            disabled={
+              checkingEmail ||
+              checkingNumber ||
+              sendingOTP ||
+              creatingUser ||
+              !isFormValid
+            }
           >
-            {form.formState.isSubmitting ? "Submitting..." : "Next"}
+            {checkingEmail || checkingNumber
+              ? "Checking availability..."
+              : sendingOTP
+              ? "Sending OTP..."
+              : creatingUser
+              ? "Creating account..."
+              : step === "password"
+              ? "Create Account"
+              : "Continue"}
           </Button>
 
-          <Button
-            type="button"
-            className="text-foreground/70 gap-1"
-            form="form-rhf-demo"
-            variant="link"
-            onClick={() => router.push("/signin")}
-          >
-            Already have an account?
-            <span className="underline underline-offset-2 text-foreground">
-              Sign in
-            </span>
-          </Button>
+          {step === "email" && (
+            <Button
+              type="button"
+              className="text-foreground/70 gap-1"
+              form="form-rhf-demo"
+              variant="link"
+              onClick={() => router.push("auth/login")}
+            >
+              Already have an account?
+              <span className="underline underline-offset-2 text-foreground">
+                Sign in
+              </span>
+            </Button>
+          )}
         </Field>
       </CardFooter>
     </Card>
