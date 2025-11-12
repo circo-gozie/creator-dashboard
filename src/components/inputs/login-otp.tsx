@@ -70,11 +70,11 @@ export default function LoginOTP({ loginData, signupMode }: LoginOTPProps) {
     onCompleted: (data) => {
       // Store tokens in cookies
       setCookie("accessToken", data.login.accessToken, {
-        expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      }); // 7 days
+        maxAge: 7 * 24 * 60 * 60, // 7 days in seconds
+      });
       setCookie("refreshToken", data.login.refreshToken, {
-        expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-      }); // 30 days
+        maxAge: 30 * 24 * 60 * 60, // 30 days in seconds
+      });
 
       toast.success("Login successful!");
 

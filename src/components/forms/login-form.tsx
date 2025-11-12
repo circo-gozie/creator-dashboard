@@ -22,7 +22,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { CheckCircle2Icon, ChevronLeft, Eye, EyeClosed } from "lucide-react";
+import { ChevronLeft, Eye, EyeClosed } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { CountryCodeSelector } from "../inputs/country-code-selector";
@@ -32,7 +32,6 @@ import {
   VerifyCredentialsInput,
   VerifyCredentialsResponse,
 } from "@/types/auth";
-import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 
 interface SignInFormProps {
   setLoginData: (data: {
@@ -295,14 +294,6 @@ export default function SignInForm({
             />
           </FieldGroup>
         </form>
-
-        <Alert>
-          <CheckCircle2Icon />
-          <AlertTitle>Success! Your changes have been saved</AlertTitle>
-          <AlertDescription>
-            This is an alert with icon, title and description.
-          </AlertDescription>
-        </Alert>
       </CardContent>
       <CardFooter>
         <Field orientation="horizontal" className="flex flex-col gap-4">

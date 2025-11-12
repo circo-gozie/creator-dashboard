@@ -47,7 +47,7 @@ import {
   SEND_ACCOUNT_VERIFICATION_OTP,
   CREATE_USER,
 } from "@/graphQl/auth";
-import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
+import { Alert, AlertDescription } from "../ui/alert";
 import Link from "next/link";
 interface EmailSignupFormProps {
   step: "email" | "password" | "otp";
@@ -115,6 +115,7 @@ export default function SignUpForm({
   const [showPassword, setShowPassword] = useState(false);
   const [signupMode, setSignupMode] = useState<"email" | "number">("email");
   const [countryCode, setCountryCode] = useState("+234");
+  const [isAccountExists, setIsAccountExists] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -147,6 +148,7 @@ export default function SignUpForm({
 
         if (data?.checkEmailAvailability) {
           // Email is available, send OTP
+          setIsAccountExists(false); // Reset the state
           await sendOTP({
             variables: {
               input: {
@@ -163,6 +165,7 @@ export default function SignUpForm({
           setStep("otp");
         } else {
           // Email already taken
+          setIsAccountExists(true);
           toast.error(
             "This email is already registered. Please sign in instead."
           );
@@ -183,6 +186,7 @@ export default function SignUpForm({
 
         if (data?.checkPhoneNumberAvailability) {
           // Phone number is available, send OTP
+          setIsAccountExists(false); // Reset the state
           await sendOTP({
             variables: {
               input: {
@@ -207,6 +211,7 @@ export default function SignUpForm({
           setStep("otp");
         } else {
           // Phone number already taken
+          setIsAccountExists(true);
           toast.error(
             "This number is already registered. Please sign in instead."
           );
@@ -432,22 +437,25 @@ export default function SignUpForm({
                 />
               ))}
 
-            <Alert className="bg-[#FFECD5] *:text-[#C86F02]">
-              <CheckCircle2Icon className="stroke-[#C86F02]" />
+            {isAccountExists && step === "email" && (
+              <Alert className="bg-[#FFECD5] *:text-[#C86F02]">
+                <CheckCircle2Icon className="stroke-[#C86F02]" />
 
-              <AlertDescription className="flex justify-start wrap-anywhere gap-1">
-                <p>
-                  This email address is already linked to an existing account.
-                  To continue
-                  <Link
-                    className="ps-0.5 underline underline-offset-2"
-                    href={"/auth/login"}
-                  >
-                     sign in.
-                  </Link>
-                </p>
-              </AlertDescription>
-            </Alert>
+                <AlertDescription className="flex justify-start wrap-anywhere gap-1">
+                  <p>
+                    This{" "}
+                    {signupMode === "email" ? "email address" : "phone number"}{" "}
+                    is already linked to an existing account. To continue
+                    <Link
+                      className="ps-0.5 underline underline-offset-2"
+                      href={"/auth/login"}
+                    >
+                      sign in.
+                    </Link>
+                  </p>
+                </AlertDescription>
+              </Alert>
+            )}
             {step === "password" && (
               <Controller
                 name="password"
@@ -517,6 +525,7 @@ export default function SignUpForm({
                 setSignupMode(signupMode === "email" ? "number" : "email");
                 form.reset();
                 form.clearErrors();
+                setIsAccountExists(false); // Reset account exists state when switching
               }}
             >
               {signupMode === "email"
@@ -554,7 +563,7 @@ export default function SignUpForm({
               className="text-foreground/70 gap-1"
               form="form-rhf-demo"
               variant="link"
-              onClick={() => router.push("auth/login")}
+              onClick={() => router.push("/auth/login")}
             >
               Already have an account?
               <span className="underline underline-offset-2 text-foreground">

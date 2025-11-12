@@ -37,7 +37,7 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-            <div className="w-full h-svh bg-background">{children}</div>
+            <div className="w-full  bg-background">{children}</div>
             <Toaster />
           </ThemeProvider>
         </ApolloWrapper>
