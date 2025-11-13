@@ -200,8 +200,8 @@ export default function SignInForm({
           <ChevronLeft />
         </Button>
         <div className="w-grow inline-flex items-center w-full justify-between">
-          <CardTitle>Welcome back </CardTitle>
-          <CardDescription className="w-fit text-nowrap text-primary-200 ">
+          <CardTitle className="font-bold text-2xl">Welcome back </CardTitle>
+          <CardDescription className="w-fit text-nowrap font-semibold text-primary-200 ">
             Login as a User
           </CardDescription>
         </div>

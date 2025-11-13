@@ -372,8 +372,10 @@ export default function SignUpForm({
         >
           <ChevronLeft />
         </Button>
-        <CardTitle>Sign Up with Email or WhatsApp </CardTitle>
-        <CardDescription className="sr-only">
+        <CardTitle className="font-bold text-2xl">
+          Create your account{" "}
+        </CardTitle>
+        <CardDescription className="sr-only font-semibold text-primary-200">
           Create an account to get started.
         </CardDescription>
       </CardHeader>
