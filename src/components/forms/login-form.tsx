@@ -195,8 +195,9 @@ export default function SignInForm({
           variant={"ghost"}
           size={"icon"}
           className="bg-background dark:bg-accent size-7"
+          onClick={() => router.push("/auth/register")}
         >
-          <ChevronLeft onClick={() => router.replace("/auth/register")} />
+          <ChevronLeft />
         </Button>
         <div className="w-grow inline-flex items-center w-full justify-between">
           <CardTitle>Welcome back </CardTitle>

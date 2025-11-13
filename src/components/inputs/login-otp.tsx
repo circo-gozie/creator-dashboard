@@ -23,7 +23,7 @@ import { LOGIN } from "@/graphQl/auth";
 import { LoginDataInput, LoginResponse } from "@/types/auth";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { setCookie, getCookie } from "cookies-next";
+import { setCookie } from "cookies-next";
 import Spinner from "../loaders/spinner";
 
 // Zod schema for OTP validation
