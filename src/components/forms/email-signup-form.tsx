@@ -164,14 +164,8 @@ export default function SignUpForm({
           toast.success("OTP sent to your email!");
           setStep("otp");
         } else {
-          // Email already taken
+          // Email already taken - only show card alert
           setIsAccountExists(true);
-          toast.error(
-            "This email is already registered. Please sign in instead."
-          );
-          form.setError("email", {
-            message: "This email is already registered",
-          });
         }
       } else {
         // Check phone number availability
@@ -210,14 +204,8 @@ export default function SignUpForm({
           toast.success("OTP sent to your WhatsApp!");
           setStep("otp");
         } else {
-          // Phone number already taken
+          // Phone number already taken - only show card alert
           setIsAccountExists(true);
-          toast.error(
-            "This number is already registered. Please sign in instead."
-          );
-          form.setError("number", {
-            message: "This number is already registered",
-          });
         }
       }
     } catch (error) {

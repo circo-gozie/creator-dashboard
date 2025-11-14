@@ -53,12 +53,12 @@ export default function LoginOTP({ loginData, signupMode }: LoginOTPProps) {
   const {
     control,
     handleSubmit,
-    formState: { errors, isValid },
+    formState: { errors, isValid, isDirty },
   } = useForm<OTPFormData>({
     resolver: zodResolver(otpSchema),
     mode: "onChange",
     defaultValues: {
-      otp: loginData.code, // Pre-fill with the code from verify credentials
+      otp: "",
     },
   });
 
@@ -139,7 +139,7 @@ export default function LoginOTP({ loginData, signupMode }: LoginOTPProps) {
     <Card>
       <form
         onSubmit={handleSubmit(onSubmit)}
-        className="w-full sm:max-w-md space-y-6  p-4"
+        className="w-full  space-y-6  p-4"
       >
         <CardHeader className="flex-col text-center pb-0 justify-center border-0">
           <CardTitle className="mx-auto w-fit ">
@@ -155,10 +155,8 @@ export default function LoginOTP({ loginData, signupMode }: LoginOTPProps) {
             Enter it below to continue.
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col gap-2 items-center justify-center">
-          <Label htmlFor="otp" className="me-auto">
-            Verification code
-          </Label>
+        <CardContent className="flex flex-col w-full gap-2">
+          <Label htmlFor="otp">Verification code</Label>
           <Controller
             name="otp"
             control={control}
@@ -168,23 +166,21 @@ export default function LoginOTP({ loginData, signupMode }: LoginOTPProps) {
                 pattern="^[0-9]*$"
                 value={field.value}
                 onChange={field.onChange}
+                className="w-full"
               >
-                <InputOTPGroup>
-                  <InputOTPSlot index={0} />
-                  <InputOTPSlot index={1} />
-                  <InputOTPSlot index={2} />
-
-                  <InputOTPSlot index={3} />
-                  <InputOTPSlot index={4} />
-                  <InputOTPSlot index={5} />
+                <InputOTPGroup className="w-full gap-2">
+                  <InputOTPSlot index={0} className="flex-1" />
+                  <InputOTPSlot index={1} className="flex-1" />
+                  <InputOTPSlot index={2} className="flex-1" />
+                  <InputOTPSlot index={3} className="flex-1" />
+                  <InputOTPSlot index={4} className="flex-1" />
+                  <InputOTPSlot index={5} className="flex-1" />
                 </InputOTPGroup>
               </InputOTP>
             )}
           />
           {errors.otp && (
-            <p className="text-sm text-destructive me-auto">
-              {errors.otp.message}
-            </p>
+            <p className="text-sm text-destructive">{errors.otp.message}</p>
           )}
         </CardContent>
         <CardFooter className="flex-col gap-4">
@@ -213,7 +209,7 @@ export default function LoginOTP({ loginData, signupMode }: LoginOTPProps) {
             type="submit"
             className="w-full"
             size={"lg"}
-            disabled={!isValid || loggingIn}
+            disabled={!isDirty || !isValid || loggingIn}
           >
             {loggingIn ? (
               <>

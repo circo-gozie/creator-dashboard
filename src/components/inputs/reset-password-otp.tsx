@@ -19,8 +19,11 @@ import {
 import { Label } from "../ui/label";
 import { Button } from "../ui/button";
 import { useMutation } from "@apollo/client/react";
-import { SEND_ACCOUNT_VERIFICATION_OTP } from "@/graphQl/auth";
-import { SendOtpInput, SendAccountVerificationOTPResponse } from "@/types/auth";
+import {
+  SEND_FORGOT_PASSWORD_OTP,
+  VERIFY_FORGOT_PASSWORD_OTP,
+} from "@/graphQl/auth";
+import { SendOtpInput, VerifyOTPInput } from "@/types/auth";
 import { toast } from "sonner";
 
 // Zod schema for OTP validation
@@ -33,23 +36,27 @@ const otpSchema = z.object({
 
 type OTPFormData = z.infer<typeof otpSchema>;
 
-interface OTPProps {
+interface ResetPasswordOTPProps {
   userData: {
     email?: string;
     phoneNumber?: { code: string; number: string };
   };
-  signupMode: "email" | "number";
-  setStep: (step: "email" | "password" | "otp") => void;
+  resetMode: "email" | "number";
   setVerifiedOtp: (otp: string) => void;
+  setStep: (step: "input-email" | "otp" | "new-password") => void;
 }
 
-export default function OTP({
+export default function ResetPasswordOTP({
   userData,
-  signupMode,
-  setStep,
+  resetMode,
   setVerifiedOtp,
-}: OTPProps) {
+  setStep,
+}: ResetPasswordOTPProps) {
   const [countdown, setCountdown] = useState(299);
+
+  // Toggle this if the API expects OTP to be used only once in RESET_PASSWORD
+  // Set to false to skip VERIFY_FORGOT_PASSWORD_OTP and go directly to password step
+  const VERIFY_OTP_BEFORE_PASSWORD = true;
   const {
     control,
     handleSubmit,
@@ -64,9 +71,16 @@ export default function OTP({
 
   // Apollo mutations
   const [resendOTP, { loading: resendingOTP }] = useMutation<
-    SendAccountVerificationOTPResponse,
+    {
+      sendForgotPasswordOtp: {
+        error: string;
+        data: string;
+        message: string;
+        statusCode: number;
+      };
+    },
     { input: SendOtpInput }
-  >(SEND_ACCOUNT_VERIFICATION_OTP, {
+  >(SEND_FORGOT_PASSWORD_OTP, {
     onCompleted: () => {
       toast.success("OTP resent successfully!");
       setCountdown(299); // Reset countdown
@@ -76,11 +90,36 @@ export default function OTP({
     },
   });
 
+  // Option 1: Verify OTP before moving to password step (may consume the OTP)
+  const [verifyOTP, { loading: verifyingOTP }] = useMutation<
+    { verifyForgotPasswordOTP: boolean },
+    { input: VerifyOTPInput }
+  >(VERIFY_FORGOT_PASSWORD_OTP, {
+    onCompleted: (data) => {
+      if (data.verifyForgotPasswordOTP) {
+        toast.success("OTP verified! Now create your new password.");
+        setStep("new-password");
+      }
+    },
+    onError: (error) => {
+      toast.error(error.message || "Invalid OTP. Please try again.");
+    },
+  });
+
+  // Option 2: Skip verification and go directly to password step
+  // This might be needed if the API expects the OTP to be used only once in RESET_PASSWORD
+  const skipVerificationAndContinue = (otp: string) => {
+    setVerifiedOtp(otp);
+    console.log("Skipping OTP verification, stored OTP:", otp);
+    toast.success("Now create your new password.");
+    setStep("new-password");
+  };
+
   const handleResendOTP = async () => {
     await resendOTP({
       variables: {
         input:
-          signupMode === "email"
+          resetMode === "email"
             ? { email: userData.email }
             : { phoneNumber: userData.phoneNumber! },
       },
@@ -92,13 +131,37 @@ export default function OTP({
     toast.info("OTP expired. Please request a new code.");
   };
 
-  const onSubmit = (data: OTPFormData) => {
-    // Store the OTP for later use when creating the user
-    setVerifiedOtp(data.otp);
+  const onSubmit = async (data: OTPFormData) => {
+    if (VERIFY_OTP_BEFORE_PASSWORD) {
+      // Option 1: Verify the OTP first before proceeding to password step
+      try {
+        console.log("Verifying OTP:", {
+          email: userData.email,
+          phoneNumber: userData.phoneNumber,
+          code: Number(data.otp),
+        });
 
-    // Move to password step
-    toast.success("OTP received! Now create your password.");
-    setStep("password");
+        await verifyOTP({
+          variables: {
+            input: {
+              email: userData.email || undefined,
+              phoneNumber: userData.phoneNumber || undefined,
+              code: Number(data.otp),
+            },
+          },
+        });
+
+        // Only store the OTP after successful verification
+        setVerifiedOtp(data.otp);
+        console.log("OTP verified successfully, stored:", data.otp);
+      } catch (error) {
+        console.error("OTP verification error:", error);
+      }
+    } else {
+      // Option 2: Skip verification, just store OTP and continue
+      // Use this if VERIFY_FORGOT_PASSWORD_OTP consumes the OTP
+      skipVerificationAndContinue(data.otp);
+    }
   };
 
   useEffect(() => {
@@ -131,13 +194,13 @@ export default function OTP({
         className="w-full space-y-6 mx-auto p-4"
       >
         <CardHeader className="flex-col text-center pb-0 justify-center border-0">
-          <CardTitle className="mx-auto w-fit ">
-            <p>Check your {signupMode === "email" ? "email" : "WhatsApp"}</p>
+          <CardTitle className="mx-auto w-fit">
+            <p>Check your {resetMode === "email" ? "email" : "WhatsApp"}</p>
           </CardTitle>
-          <CardDescription className="w-full ">
+          <CardDescription className="w-full">
             {"We've"} sent a 6-digit code to
             <span className="font-medium px-0.5">
-              {signupMode === "email"
+              {resetMode === "email"
                 ? userData.email
                 : `+${userData.phoneNumber?.code} ${userData.phoneNumber?.number}`}
             </span>{" "}
@@ -197,9 +260,9 @@ export default function OTP({
             type="submit"
             className="w-full"
             size={"lg"}
-            disabled={!isDirty || !isValid}
+            disabled={!isDirty || !isValid || verifyingOTP}
           >
-            Continue
+            {verifyingOTP ? "Verifying..." : "Verify & Continue"}
           </Button>
         </CardFooter>
       </form>

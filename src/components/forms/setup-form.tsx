@@ -31,6 +31,13 @@ import { Toggle } from "../ui/toggle";
 import { Separator } from "../ui/separator";
 import Image from "next/image";
 import { useState } from "react";
+import { useMutation } from "@apollo/client/react";
+import {
+  CREATE_STUDIO,
+  CreateStudioInput,
+  CreateStudioResponse,
+} from "@/graphQl/studio";
+import { toast } from "sonner";
 
 const stepDefinitions = [
   {
@@ -86,13 +93,49 @@ export default function SetupForm({ setIsSetupCompleted }: SetupFormProps) {
     },
   });
 
-  const onSubmit = (data: SetupFormValues) => {
+  const [createStudio, { loading: creatingStudio }] = useMutation<
+    CreateStudioResponse,
+    { input: CreateStudioInput }
+  >(CREATE_STUDIO, {
+    onCompleted: (data) => {
+      console.log("Studio created successfully:", data.createStudio);
+      toast.success("Studio created successfully!");
+      setIsSetupCompleted(true);
+    },
+    onError: (error) => {
+      console.error("Failed to create studio:", error);
+      toast.error(
+        error.message || "Failed to create studio. Please try again."
+      );
+    },
+  });
+
+  const onSubmit = async (data: SetupFormValues) => {
     console.log("Form submitted:", data);
-    // Handle form submission here
-    setIsSetupCompleted(true);
+
+    const studioInput: CreateStudioInput = {
+      name: data.name,
+      description: data.description,
+      studioType: data.type === "public" ? "PUBLIC" : "PRIVATE",
+      category: data.category,
+    };
+
+    console.log("Creating studio with input:", studioInput);
+
+    try {
+      await createStudio({
+        variables: {
+          input: studioInput,
+        },
+      });
+    } catch (error) {
+      console.error("Error submitting studio:", error);
+    }
   };
 
   const selectedCategory = form.watch("category") || "";
+  const studioName = form.watch("name") || "";
+  const studioDescription = form.watch("description") || "";
 
   const toggleCategory = (category: string) => {
     const currentCategory = form.getValues("category");
@@ -128,7 +171,7 @@ export default function SetupForm({ setIsSetupCompleted }: SetupFormProps) {
   };
 
   return (
-    <div className="flex size-full h-full flex-col items-center justify-center bg-background-300 py-8">
+    <div className="flex size-full h-screen flex-col items-center justify-center bg-background-300 py-8">
       <Card className="bg-background !w-full flex flex-row gap-0 p-0 max-w-6xl md:aspect-video relative overflow-hidden">
         <div className="basis-2/5 bg-background">
           <CardHeader className="flex-col border-b-0 p-4 sm:p-8">
@@ -143,36 +186,67 @@ export default function SetupForm({ setIsSetupCompleted }: SetupFormProps) {
           <CardContent className="w-full space-y-1 p-4 sm:px-8">
             <Toggle
               className={`px-0 space-x-1 h-0 !py-0 ${
-                currentStep === 1 ? "bg-orange-400" : "bg-transparent"
+                currentStep >= 1 ? "bg-transparent" : "bg-transparent"
               }`}
             >
-              <Circle className="size-3" /> <p>Studio Type</p>
+              <Circle
+                className={`size-3 ${
+                  currentStep >= 1
+                    ? "fill-primary text-primary"
+                    : "fill-transparent text-foreground/30"
+                }`}
+              />
+              <p
+                className={
+                  currentStep >= 1 ? "text-primary" : "text-foreground/30"
+                }
+              >
+                Studio Type
+              </p>
             </Toggle>
             <Separator
               className={`h-4 translate-x-1 mt-1 ${
-                currentStep >= 2 ? "bg-foreground" : "bg-foreground/30"
+                currentStep >= 2 ? "bg-primary" : "bg-foreground/30"
               }`}
               orientation="vertical"
             />
-            <Toggle
-              className={`px-0 space-x-1 h-0 !py-0 ${
-                currentStep === 2 ? "bg-orange-400" : "bg-transparent"
-              }`}
-            >
-              <Circle className="size-3" /> <p>Studio Details</p>
+            <Toggle className={`px-0 space-x-1 h-0 !py-0 bg-transparent`}>
+              <Circle
+                className={`size-3 ${
+                  currentStep >= 2
+                    ? "fill-primary text-primary"
+                    : "fill-transparent text-foreground/30"
+                }`}
+              />
+              <p
+                className={
+                  currentStep >= 2 ? "text-primary" : "text-foreground/30"
+                }
+              >
+                Studio Details
+              </p>
             </Toggle>
             <Separator
               className={`h-4 translate-x-1 my-1 ${
-                currentStep >= 3 ? "bg-foreground" : "bg-foreground/30"
+                currentStep >= 3 ? "bg-primary" : "bg-foreground/30"
               }`}
               orientation="vertical"
             />
-            <Toggle
-              className={`px-0 space-x-1 h-0 !py-0 ${
-                currentStep === 3 ? "bg-orange-400" : "bg-transparent"
-              }`}
-            >
-              <Circle className="size-3" /> <p>Category</p>
+            <Toggle className={`px-0 space-x-1 h-0 !py-0 bg-transparent`}>
+              <Circle
+                className={`size-3 ${
+                  currentStep >= 3
+                    ? "fill-primary text-primary"
+                    : "fill-transparent text-foreground/30"
+                }`}
+              />
+              <p
+                className={
+                  currentStep >= 3 ? "text-primary" : "text-foreground/30"
+                }
+              >
+                Category
+              </p>
             </Toggle>
           </CardContent>
         </div>
@@ -295,7 +369,21 @@ export default function SetupForm({ setIsSetupCompleted }: SetupFormProps) {
                 <>
                   <FieldGroup>
                     <Field>
-                      <FieldLabel htmlFor="name">Studio Name</FieldLabel>
+                      <FieldLabel
+                        htmlFor="name"
+                        className="w-full flex justify-between"
+                      >
+                        <p>Studio Name</p>
+                        <p
+                          className={`text-xs ${
+                            studioName.length > 20
+                              ? "text-red-500"
+                              : "text-foreground/50"
+                          }`}
+                        >
+                          {studioName.length}/20
+                        </p>
+                      </FieldLabel>
 
                       <Input
                         id="name"
@@ -326,7 +414,21 @@ export default function SetupForm({ setIsSetupCompleted }: SetupFormProps) {
                   {/* Studio Description */}
                   <FieldGroup>
                     <Field>
-                      <FieldLabel htmlFor="description">Description</FieldLabel>
+                      <FieldLabel
+                        htmlFor="description"
+                        className="w-full flex justify-between"
+                      >
+                        <p>Description</p>
+                        <p
+                          className={`text-xs ${
+                            studioDescription.length > 500
+                              ? "text-red-500"
+                              : "text-foreground/50"
+                          }`}
+                        >
+                          {studioDescription.length}/500
+                        </p>
+                      </FieldLabel>
                       <Textarea
                         id="description"
                         placeholder="Describe your studio"
@@ -334,6 +436,7 @@ export default function SetupForm({ setIsSetupCompleted }: SetupFormProps) {
                         aria-invalid={!!form.formState.errors.description}
                         className="aspect-6/1"
                         rows={4}
+                        maxLength={500}
                       />
                       <FieldError
                         errors={
@@ -407,8 +510,9 @@ export default function SetupForm({ setIsSetupCompleted }: SetupFormProps) {
                   type="submit"
                   onClick={form.handleSubmit(onSubmit)}
                   className="px-8"
+                  disabled={creatingStudio}
                 >
-                  Create Studio
+                  {creatingStudio ? "Creating Studio..." : "Create Studio"}
                 </Button>
               )}
             </CardFooter>

@@ -4,7 +4,7 @@ import { RadioReceiver, Upload } from "lucide-react";
 
 const SetupComplete = () => {
   return (
-    <div className="size-full  flex text-background items-center justify-center p-4">
+    <div className="size-full h-screen flex text-background items-center justify-center p-4">
       <div className="w-md text-center space-y-4">
         <p className="text-4xl font-semibold bg-gradient-to-r from-primary to-primary-200 bg-clip-text text-transparent">
           Studio Ready!

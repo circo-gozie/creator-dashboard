@@ -32,6 +32,7 @@ import {
   VerifyCredentialsInput,
   VerifyCredentialsResponse,
 } from "@/types/auth";
+import Link from "next/link";
 
 interface SignInFormProps {
   setLoginData: (data: {
@@ -268,7 +269,15 @@ export default function SignInForm({
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid} className="!relative ">
                   <FieldLabel htmlFor="form-rhf-demo-password">
-                    Password
+                    <div className="w-full flex justify-between">
+                      Password
+                      <Link
+                        href="/auth/reset-password"
+                        className="text-xs text-foreground"
+                      >
+                        Forgot password?
+                      </Link>
+                    </div>
                   </FieldLabel>
                   <Input
                     {...field}
